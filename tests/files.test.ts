@@ -1,0 +1,55 @@
+import assert from 'node:assert/strict';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { test } from 'node:test';
+import { CommandDispatcher } from '../src/application/CommandDispatcher.js';
+import { EditorSession } from '../src/application/EditorSession.js';
+import { CommandLine } from '../src/cli/CommandLine.js';
+import { FileSystemStore } from '../src/infrastructure/FileSystemStore.js';
+import { XmlSvgCodec } from '../src/infrastructure/XmlSvgCodec.js';
+import { TemporaryWorkspace } from './support/TemporaryWorkspace.js';
+
+test('file adapter atomically replaces files and cleans up failed-save temporary files', async t => {
+  const workspace = await TemporaryWorkspace.create();
+  t.after(() => workspace.dispose());
+  const store = new FileSystemStore();
+  const file = join(workspace.path, 'with spaces.svg');
+  await store.write(file, 'before');
+  await store.write(file, 'after');
+  assert.equal(await store.read(file), 'after');
+  const directory = join(workspace.path, 'directory.svg');
+  await mkdir(directory);
+  await writeFile(join(directory, 'keep.txt'), 'keep');
+  await assert.rejects(store.write(directory, 'cannot replace a directory'), /cannot write file:/);
+  assert.equal(await readFile(join(directory, 'keep.txt'), 'utf8'), 'keep');
+  assert.deepEqual((await readdir(workspace.path)).sort(), ['directory.svg', 'with spaces.svg']);
+  await assert.rejects(store.read(join(workspace.path, 'missing.svg')), /cannot read file:/);
+});
+
+test('read-path saving, explicit-path saving and failed import preserve correct state and history', async t => {
+  const workspace = await TemporaryWorkspace.create();
+  t.after(() => workspace.dispose());
+  const path = join(workspace.path, 'input.svg');
+  await writeFile(path, '<svg width="100" height="200"><circle id="c" cx="1" cy="2" r="3"/></svg>');
+  const session = new EditorSession(new FileSystemStore(), new XmlSvgCodec());
+  const cli = new CommandLine(new CommandDispatcher(session));
+  assert.doesNotMatch(await cli.execute(`read "${path}"`), /^error:/);
+  await cli.execute('move c 10 20');
+  assert.doesNotMatch(await cli.execute('save'), /^error:/);
+  assert.equal(new XmlSvgCodec().decode(await readFile(path, 'utf8')).document.find('c').attributes.cx, '11');
+  await cli.execute('move c 1 1');
+  const before = await cli.execute('tree');
+  const bad = join(workspace.path, 'bad.svg');
+  await writeFile(bad, '<svg><rect/><path/></svg>');
+  assert.match(await cli.execute(`read "${bad}"`), /^error: unknown shape type: path/);
+  assert.equal(await cli.execute('tree'), before);
+  assert.equal(session.path, path);
+  assert.match(await cli.execute('undo'), /^undone:/);
+  const other = join(workspace.path, 'other.svg');
+  assert.doesNotMatch(await cli.execute(`save "${other}"`), /^error:/);
+  assert.equal(session.path, other);
+  assert.equal(await cli.execute('undo'), 'error: undo not allowed after io command');
+  await cli.execute('init');
+  assert.equal(session.path, undefined);
+  assert.equal(await cli.execute('save'), 'error: no file path. use save <file.svg>');
+});

@@ -19,10 +19,12 @@ test('CLI creates nested shapes, quoted text, colors, and geometry-rich displays
   assert.equal(session.document.find('t').content, 'hello world');
   assert.match(await cli.execute('tree scene'), /rect#r x=1.5 y=-2 w=30 h=40/);
   assert.match(await cli.execute('show t'), /parent=g#scene/);
+  assert.match(await cli.execute('show r'), /x=1.5/);
   assert.equal(await cli.execute('  # a comment'), '');
   assert.equal(await cli.execute('create text q 0 0 "in"'), 'text#q created');
   assert.equal(await cli.execute('create text empty 0 0 ""'), 'text#empty created');
   assert.match(await cli.execute('create text bad 0 0 "unterminated'), /^error: unterminated/);
+  assert.match(await cli.execute('create text bad 0 0 "in" target'), /^error: invalid parameters for text/);
   assert.equal(session.document.find('empty').content, '');
 });
 

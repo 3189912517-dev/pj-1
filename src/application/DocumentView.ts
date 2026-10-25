@@ -23,7 +23,9 @@ export class DocumentView {
   show(document: SvgDocument, id: string): string {
     const shape = document.find(id);
     const lines = [`${shape.label}  parent=${document.parentLabel(shape)}`];
-    for (const [key, value] of Object.entries(shape.attributes)) lines.push(`  ${key}=${JSON.stringify(value)}`);
+    for (const [key, value] of Object.entries(shape.attributes)) {
+      lines.push(`  ${key}=${/[\s"<>]/.test(value) ? JSON.stringify(value) : value}`);
+    }
     if (shape.content !== undefined) lines.push(`  text=${JSON.stringify(shape.content)}`);
     return lines.join('\n');
   }
