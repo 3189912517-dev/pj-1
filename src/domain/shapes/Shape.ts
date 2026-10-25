@@ -15,15 +15,15 @@ export abstract class Shape {
     for (const [key, value] of Object.entries(attributes)) {
       if (key !== 'id') this.properties.set(key, SvgValue.text(value));
     }
-    for (const key of geometry) this.set(key, attributes[key] ?? '0');
-    if (attributes['stroke-width'] !== undefined) this.set('stroke-width', attributes['stroke-width']);
+    for (const key of geometry) this.set(key, (attributes[key] ?? '0').trim().replace(/px$/, ''));
+    if (attributes['stroke-width'] !== undefined) this.set('stroke-width', attributes['stroke-width'].trim().replace(/px$/, ''));
   }
 
   get id(): string { return this.identity; }
   abstract get tag(): string;
   get label(): string { return `${this.tag}#${this.id}`; }
   get attributes(): Readonly<Record<string, string>> { return Object.freeze(Object.fromEntries(this.properties)); }
-  get content(): string { return ''; }
+  get content(): string | undefined { return undefined; }
   get children(): readonly Shape[] { return []; }
 
   set(attribute: string, value: string): void {

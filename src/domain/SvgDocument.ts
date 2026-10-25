@@ -6,7 +6,7 @@ export class SvgDocument {
   private root = new Group('@canvas');
   private canvasWidth: number;
   private canvasHeight: number;
-  private readonly extra: Readonly<Record<string, string>>;
+  private extra: Readonly<Record<string, string>>;
 
   constructor(width = 800, height = 600, attributes: Readonly<Record<string, string>> = {}) {
     this.canvasWidth = SvgValue.positive(width, 'canvas width');
@@ -25,6 +25,7 @@ export class SvgDocument {
     const w = SvgValue.positive(width, 'canvas width');
     const h = SvgValue.positive(height, 'canvas height');
     this.canvasWidth = w; this.canvasHeight = h;
+    this.extra = Object.freeze({ ...this.extra, viewBox: `0 0 ${w} ${h}` });
   }
 
   find(id: string): Shape {

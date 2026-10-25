@@ -24,7 +24,7 @@ export class DocumentView {
     const shape = document.find(id);
     const lines = [`${shape.label}  parent=${document.parentLabel(shape)}`];
     for (const [key, value] of Object.entries(shape.attributes)) lines.push(`  ${key}=${JSON.stringify(value)}`);
-    if (shape.content || shape.tag === 'text') lines.push(`  text=${JSON.stringify(shape.content)}`);
+    if (shape.content !== undefined) lines.push(`  text=${JSON.stringify(shape.content)}`);
     return lines.join('\n');
   }
 }
